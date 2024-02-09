@@ -98,16 +98,14 @@ class DispatchingConfig:
         self._pop_from(self._process_configs, conf)
 
     def __getattr__(self, attr):
-        conf = self.current_conf()
-        if conf is None:
+        if (conf := self.current_conf()) is None:
             raise AttributeError(
                 "No configuration has been registered for this process or thread"
             )
         return getattr(conf, attr)
 
     def current_conf(self):
-        thread_configs = local_dict().get(self._local_key)
-        if thread_configs:
+        if thread_configs := local_dict().get(self._local_key):
             return thread_configs[-1]
         elif self._process_configs:
             return self._process_configs[-1]
@@ -116,8 +114,7 @@ class DispatchingConfig:
 
     def __getitem__(self, key):
         # I thought __getattr__ would catch this, but apparently not
-        conf = self.current_conf()
-        if conf is None:
+        if (conf := self.current_conf()) is None:
             raise TypeError(
                 "No configuration has been registered for this process or thread"
             )

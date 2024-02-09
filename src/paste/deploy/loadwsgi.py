@@ -586,8 +586,7 @@ class ConfigLoader(_Loader):
         possible = []
         for name_options in object_type.config_prefixes:
             for name_prefix in name_options:
-                found = self._find_sections(self.parser.sections(), name_prefix, name)
-                if found:
+                if found := self._find_sections(self.parser.sections(), name_prefix, name):
                     possible.extend(found)
                     break
         if not possible:
@@ -656,8 +655,7 @@ class EggLoader(_Loader):
         possible = []
         for protocol_options in object_type.egg_protocols:
             for protocol in protocol_options:
-                entry = find_entry_point(dist, protocol, name)
-                if entry is not None:
+                if (entry := find_entry_point(dist, protocol, name)) is not None:
                     possible.append((entry.load(), protocol, entry.name))
                     break
         if not possible:
