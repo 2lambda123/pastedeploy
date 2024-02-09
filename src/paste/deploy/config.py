@@ -12,6 +12,13 @@ __all__ = ['DispatchingConfig', 'CONFIG', 'ConfigMiddleware', 'PrefixMiddleware'
 
 
 def local_dict():
+    """Returns:
+        - dict: A dictionary containing local configuration settings.
+    Processing Logic:
+        - If the global variable 'config_local' exists, return its 'wsgi_dict' attribute.
+        - If the global variable 'config_local' does not exist, create it as a thread-local variable and set its 'wsgi_dict' attribute to an empty dictionary, then return the dictionary.
+        - If the global variable 'config_local' exists but does not have a 'wsgi_dict' attribute, set the attribute to an empty dictionary and return it."""
+    
     global config_local, local
     try:
         return config_local.wsgi_dict
@@ -42,6 +49,20 @@ class DispatchingConfig:
     _constructor_lock = threading.Lock()
 
     def __init__(self):
+        """Function:
+        Initializes the process configuration by acquiring a constructor lock and setting the dispatching ID to 0.
+        Parameters:
+            - None
+        Returns:
+            - None
+        Processing Logic:
+            - Acquire constructor lock.
+            - Set dispatching ID to 0.
+            - Loop until a unique local key is found.
+            - Increment dispatching ID if key already exists.
+            - Release constructor lock.
+            - Initialize process configurations list."""
+        
         self._constructor_lock.acquire()
         try:
             self.dispatching_id = 0
@@ -80,6 +101,19 @@ class DispatchingConfig:
         self._pop_from(local_dict()[self._local_key], conf)
 
     def _pop_from(self, lst, conf):
+        """Function:
+        Pops the last element from a list and checks if it matches a given configuration.
+        Parameters:
+            - lst (list): The list to pop from.
+            - conf (any): The expected configuration to match the popped element.
+        Returns:
+            - popped (any): The popped element from the list.
+        Processing Logic:
+            - Pop the last element from the list.
+            - If a configuration is provided, check if the popped element matches it.
+            - If not, raise an AssertionError.
+            - Only the last element is popped, regardless of the list's length."""
+        
         popped = lst.pop()
         if conf is not None and popped is not conf:
             raise AssertionError(
@@ -95,9 +129,30 @@ class DispatchingConfig:
         self._process_configs.append(conf)
 
     def pop_process_config(self, conf=None):
+        """Populates the process configuration dictionary.
+        Parameters:
+            - conf (dict): Dictionary containing process configuration data.
+        Returns:
+            - None: This function does not return anything.
+        Processing Logic:
+            - Remove specified configuration from dictionary.
+            - If no configuration is specified, remove all configurations.
+            - Only affects process configuration dictionary.
+            - Does not affect any other data."""
+        
         self._pop_from(self._process_configs, conf)
 
     def __getattr__(self, attr):
+        """"Returns the attribute value of the current configuration for the process or thread.
+        Parameters:
+            - attr (str): The name of the attribute to retrieve.
+        Returns:
+            - Any: The value of the specified attribute from the current configuration.
+        Processing Logic:
+            - Get the current configuration.
+            - Raise an error if no configuration is found.
+            - Return the value of the specified attribute from the current configuration.""""
+        
         if (conf := self.current_conf()) is None:
             raise AttributeError(
                 "No configuration has been registered for this process or thread"
@@ -105,6 +160,8 @@ class DispatchingConfig:
         return getattr(conf, attr)
 
     def current_conf(self):
+        """"""
+        
         if thread_configs := local_dict().get(self._local_key):
             return thread_configs[-1]
         elif self._process_configs:
@@ -113,6 +170,8 @@ class DispatchingConfig:
             return None
 
     def __getitem__(self, key):
+        """"""
+        
         # I thought __getattr__ would catch this, but apparently not
         if (conf := self.current_conf()) is None:
             raise TypeError(
@@ -121,10 +180,24 @@ class DispatchingConfig:
         return conf[key]
 
     def __contains__(self, key):
+        """"""
+        
         # I thought __getattr__ would catch this, but apparently not
         return key in self
 
     def __setitem__(self, key, value):
+        """"Updates the current configuration with the given key-value pair."
+        Parameters:
+            - key (str): The key to be updated in the configuration.
+            - value (any): The value to be associated with the given key.
+        Returns:
+            - None: This function does not return any value.
+        Processing Logic:
+            - Updates the current configuration.
+            - Uses the key-value pair to update the configuration.
+            - Only updates the current configuration, not the entire configuration.
+            - Uses the __getattr__ method to catch any errors."""
+        
         # I thought __getattr__ would catch this, but apparently not
         conf = self.current_conf()
         conf[key] = value
@@ -150,6 +223,8 @@ class ConfigMiddleware:
         self.config = config
 
     def __call__(self, environ, start_response):
+        """"""
+        
         global wsgilib
         if wsgilib is None:
             from paste import wsgilib
@@ -185,6 +260,18 @@ class ConfigMiddleware:
 
 
 def make_config_filter(app, global_conf, **local_conf):
+    """This function creates a configuration filter for the provided application, using the global and local configurations.
+    Parameters:
+        - app (function): The application to be filtered.
+        - global_conf (dict): The global configuration.
+        - **local_conf (dict): The local configuration.
+    Returns:
+        - ConfigMiddleware: The filtered application with the updated configuration.
+    Processing Logic:
+        - Creates a copy of the global configuration.
+        - Updates the global configuration with the local configuration.
+        - Returns the filtered application with the updated configuration."""
+    
     conf = global_conf.copy()
     conf.update(local_conf)
     return ConfigMiddleware(app, conf)
@@ -255,6 +342,8 @@ class PrefixMiddleware:
         force_port=None,
         scheme=None,
     ):
+        """"""
+        
         self.app = app
         self.prefix = prefix.rstrip('/')
         self.translate_forwarded_server = translate_forwarded_server
@@ -263,6 +352,8 @@ class PrefixMiddleware:
         self.scheme = scheme
 
     def __call__(self, environ, start_response):
+        """"""
+        
         url = environ['PATH_INFO']
         url = re.sub(self.regprefix, r'\1', url)
         if not url:
@@ -311,6 +402,8 @@ def make_prefix_middleware(
     force_port=None,
     scheme=None,
 ):
+    """"""
+    
     from paste.deploy.converters import asbool
 
     translate_forwarded_server = asbool(translate_forwarded_server)
