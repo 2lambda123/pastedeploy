@@ -17,6 +17,22 @@ __all__ = ['loadapp', 'loadserver', 'loadfilter', 'appconfig']
 
 
 def find_entry_point(dist, group, name):
+    """Function to find the entry point in a distribution for a given group and name.
+    Parameters:
+        - dist (Distribution): The distribution to search for the entry point.
+        - group (str): The group of the entry point.
+        - name (str): The name of the entry point.
+    Returns:
+        - entry (EntryPoint): The entry point with the given group and name.
+    Processing Logic:
+        - Loop through all entry points in the distribution.
+        - Check if the entry point's name and group match the given parameters.
+        - If a match is found, return the entry point.
+        - If no match is found, return None.
+    Example:
+        entry = find_entry_point(my_dist, "utils", "process_data")
+        # entry is now the entry point for the "process_data" function in the "utils" group of the distribution "my_dist"."""
+    
     for entry in dist.entry_points:
         if entry.name == name and entry.group == group:
             return entry
@@ -49,6 +65,20 @@ def _flatten(lst):
 
 class NicerConfigParser(ConfigParser):
     def __init__(self, filename, *args, **kw):
+        """Initializes a ConfigParser object with the given filename and arguments.
+        Returns an InterpolateWrapper object for interpolation.
+        Parameters:
+            - filename (str): The name of the file to be used for initialization.
+            - *args: Additional arguments to be passed to the ConfigParser initialization.
+            - **kw: Additional keyword arguments to be passed to the ConfigParser initialization.
+        Returns:
+            - InterpolateWrapper: An object used for interpolation.
+        Processing Logic:
+            - Initializes a ConfigParser object.
+            - Sets the filename attribute.
+            - Wraps the interpolation function.
+            - Returns the wrapped interpolation function."""
+        
         ConfigParser.__init__(self, *args, **kw)
         self.filename = filename
         self._interpolation = self.InterpolateWrapper(self._interpolation)
@@ -96,16 +126,38 @@ class _ObjectType:
     config_prefixes = None
 
     def __init__(self):
+        """Normalize the egg protocols and config prefixes.
+        Parameters:
+            - self (object): The object to be normalized.
+        Returns:
+            - None: The function does not return anything.
+        Processing Logic:
+            - Normalize egg protocols.
+            - Normalize config prefixes."""
+        
         # Normalize these variables:
         self.egg_protocols = [_aslist(p) for p in _aslist(self.egg_protocols)]
         self.config_prefixes = [_aslist(p) for p in _aslist(self.config_prefixes)]
 
     def __repr__(self):
+        """"Returns a string representation of the object with its name, egg protocols, and config prefixes.
+        Parameters:
+            - self (object): The object itself.
+        Returns:
+            - str: A string representation of the object.
+        Processing Logic:
+            - Uses the object's name, egg protocols, and config prefixes.
+            - Formats the string using the object's attributes.
+            - Uses the __repr__ method to return a string representation.
+            - Only returns the string representation, not any code."""
+        
         return '<{} protocols={!r} prefixes={!r}>'.format(
             self.name, self.egg_protocols, self.config_prefixes
         )
 
     def invoke(self, context):
+        """"""
+        
         assert context.protocol in _flatten(self.egg_protocols)
         return fix_call(context.object, context.global_conf, **context.local_conf)
 
@@ -125,6 +177,8 @@ class _App(_ObjectType):
     ]
 
     def invoke(self, context):
+        """"""
+        
         if context.protocol in ('paste.composit_factory', 'paste.composite_factory'):
             return fix_call(
                 context.object,
@@ -147,6 +201,8 @@ class _Filter(_ObjectType):
     config_prefixes = ['filter']
 
     def invoke(self, context):
+        """"""
+        
         if context.protocol == 'paste.filter_factory':
             return fix_call(context.object, context.global_conf, **context.local_conf)
         elif context.protocol == 'paste.filter_app_factory':
@@ -171,6 +227,8 @@ class _Server(_ObjectType):
     config_prefixes = ['server']
 
     def invoke(self, context):
+        """"""
+        
         if context.protocol == 'paste.server_factory':
             return fix_call(context.object, context.global_conf, **context.local_conf)
         elif context.protocol == 'paste.server_runner':
@@ -195,6 +253,8 @@ class _PipeLine(_ObjectType):
     name = 'pipeline'
 
     def invoke(self, context):
+        """"""
+        
         app = context.app_context.create()
         filters = [c.create() for c in context.filter_contexts]
         filters.reverse()
@@ -210,6 +270,8 @@ class _FilterApp(_ObjectType):
     name = 'filter_app'
 
     def invoke(self, context):
+        """"""
+        
         next_app = context.next_context.create()
         filter = context.filter_context.create()
         return filter(next_app)
@@ -222,6 +284,8 @@ class _FilterWith(_App):
     name = 'filtered_with'
 
     def invoke(self, context):
+        """"""
+        
         filter = context.filter_context.create()
         filtered = context.next_context.create()
         if context.next_context.object_type is APP:
@@ -243,18 +307,26 @@ FILTER_WITH = _FilterWith()
 
 
 def loadapp(uri, name=None, **kw):
+    """"""
+    
     return loadobj(APP, uri, name=name, **kw)
 
 
 def loadfilter(uri, name=None, **kw):
+    """"""
+    
     return loadobj(FILTER, uri, name=name, **kw)
 
 
 def loadserver(uri, name=None, **kw):
+    """"""
+    
     return loadobj(SERVER, uri, name=name, **kw)
 
 
 def appconfig(uri, name=None, relative_to=None, global_conf=None):
+    """"""
+    
     context = loadcontext(
         APP, uri, name=name, relative_to=relative_to, global_conf=global_conf
     )
@@ -265,6 +337,8 @@ _loaders = {}
 
 
 def loadobj(object_type, uri, name=None, relative_to=None, global_conf=None):
+    """"""
+    
     context = loadcontext(
         object_type, uri, name=name, relative_to=relative_to, global_conf=global_conf
     )
@@ -272,6 +346,8 @@ def loadobj(object_type, uri, name=None, relative_to=None, global_conf=None):
 
 
 def loadcontext(object_type, uri, name=None, relative_to=None, global_conf=None):
+    """"""
+    
     if '#' in uri:
         if name is None:
             uri, name = uri.split('#', 1)
@@ -301,6 +377,8 @@ def loadcontext(object_type, uri, name=None, relative_to=None, global_conf=None)
 
 
 def _loadconfig(object_type, uri, path, name, relative_to, global_conf):
+    """"""
+    
     isabs = os.path.isabs(path)
     # De-Windowsify the paths:
     path = path.replace('\\', '/')
@@ -328,6 +406,8 @@ _loaders['config'] = _loadconfig
 
 
 def _loadegg(object_type, uri, spec, name, relative_to, global_conf):
+    """"""
+    
     loader = EggLoader(spec)
     return loader.get_context(object_type, name, global_conf)
 
@@ -336,6 +416,8 @@ _loaders['egg'] = _loadegg
 
 
 def _loadfunc(object_type, uri, spec, name, relative_to, global_conf):
+    """"""
+    
     loader = FuncLoader(spec)
     return loader.get_context(object_type, name, global_conf)
 
